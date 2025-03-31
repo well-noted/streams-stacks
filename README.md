@@ -13,7 +13,8 @@ Stacks is an alternate viewtemplate with which one can engage Streams
 By clicking on the top of the card, one can "descend" the "Stack" revealing the layer of "cards" underneath it
 
 
-<img src="https://github.com/user-attachments/assets/ac6fdc8b-7d4d-414a-848d-2f26175d76f6" width="500" />
+![vivaldi_l6fkCRaDNU](https://github.com/user-attachments/assets/43292a5b-4587-46b2-9b03-7907954f726d)
+
 
 <br><br>
 
