@@ -17,4 +17,5 @@ By clicking on the top of the card, one can "descend" the "Stack" revealing the 
 
 <br><br>
 
-<img src="https://github.com/user-attachments/assets/90b59a63-6eac-428b-abcf-069964fa065e" width="500" />
+![vivaldi_mQZzNzp1Z4](https://github.com/user-attachments/assets/696abbef-2f20-4783-9914-ce2f9935dd4b)
+
