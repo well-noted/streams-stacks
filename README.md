@@ -3,4 +3,8 @@ a "Streams" expansion plugin for Tiddlywiki
 
 
 
-![image](https://github.com/user-attachments/assets/0968a448-c1a3-4071-b511-2bbb5497021d)
+<img src="https://github.com/user-attachments/assets/100cf9fd-4e3c-457a-be9c-017744af0b9b" width="250" />
+
+Stacks is an alternate viewtemplate with which one can engage Streams
+
+By clicking on the top of the card, one can "descend" the "Stack" revealing the layer of "cards" underneath it
