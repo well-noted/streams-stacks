@@ -1,0 +1,92 @@
+created: 20240905175711531
+modified: 20250331145647462
+revision: 0
+tags: 
+title: $:/plugins/NoteStreams/streams-stacks/cards-node-template
+type: text/vnd.tiddlywiki
+
+\import [[$:/plugins/sq/streams/action-macros]] [all[shadows+tiddlers]tag[$:/tags/streams/actionmacros]]  [all[shadows+tiddlers]tag[$:/tags/streams/user-actionmacros]]
+\whitespace trim
+
+\define add-new-log-action()
+<$vars viewingTiddler={{{ [[$:/state/viewing-tiddler/]addsuffix<currentTiddler>get[text]] :else[<currentTiddler>] }}}>
+<$wikify name="new-log" text="Log {{$:/temp/NewLogCounter!!text}}">
+<$wikify name="new-log" text={{{[<viewingTiddler>addsuffix[/]addsuffix<now "[UTC]YYYY0MM0DD0hh0mm0ssXXX">]}}}> -->
+  <$action-createtiddler $basetitle=<<new-log>> 
+    caption="New Log"
+    created=<<now [UTC]YYYY0MM0DD0hh0mm0ssXXX>>
+    modified=<<now [UTC]YYYY0MM0DD0hh0mm0ssXXX>>
+    parent=<<viewingTiddler>>
+  />
+  <$action-listops $tiddler=<<viewingTiddler>> $field="stream-list" $subfilter="[<new-log>]"/>
+  <$action-setfield $tiddler="$:/temp/NewLogCounter" text={{{[{$:/temp/NewLogCounter!!text}add[1]]}}}/>
+</$wikify>
+</$wikify>
+</$vars>
+\end
+
+
+<$vars stream-root-title=<<currentTiddler>>
+	contextmenu-state=<<qualify "$:/state/sq-context-popup">>
+	row-edit-state=<<qualify "$:/state/sq/streams/current-edit-tiddler">>
+	drag-title-state=<<qualify "$:/state/sq/streams/current-drag-title">>
+	drag-title-nextsibling-state=<<qualify "$:/state/sq/streams/current-drag-nextsibling">> 
+>
+<div class="log-node-root">
+    <$list filter="[all[current]match<stream-root-title>]" variable="_NULL">
+        <div class="log-node-row">
+            <div class="log-node-content">
+                <div class="log-node-control log-node-control-addnew">
+                    <div class="log-node-collapser">
+                    </div>
+                </div>
+                <div class="log-node-block">
+                    <!--consider moving last child dropzone in here, though thats for children too-->
+                </div>
+            </div>
+            <div class="log-node-buttons">
+    <$list filter="[all[shadows+tiddlers]tag[$:/tags/streams/root-buttons]]" variable="btnTiddler">
+        <div class="log-node-handle">
+            <$transclude tiddler=<<btnTiddler>>/>
+        </div>
+    </$list>
+    <div class="log-node-handle log-node-add-button">
+        <$button tag="div" class="tc-btn-invisible" tooltip="add log" actions=<<add-new-log-action>> >
+            {{$:/plugins/sq/streams/icons/new-node-btn}}
+        </$button>
+    </div>
+</div>
+        </div>
+    </$list>
+</div>
+
+<style>
+.log-node-root {
+    --log-node-button-margin: 5px;
+}
+
+.log-node-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.log-node-content {
+    flex-grow: 1;
+}
+
+.log-node-buttons {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+.log-node-buttons .log-node-handle {
+    margin-left: var(--log-node-button-margin);
+}
+
+.log-node-add-button {
+    margin-left: auto;
+}
+</style>

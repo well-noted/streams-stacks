@@ -1,0 +1,21 @@
+created: 20240905170949931
+modified: 20250330142554071
+revision: 0
+tags: 
+title: $:/plugins/NoteStreams/streams-stacks/Viewtemplates/Cards
+type: text/vnd.tiddlywiki
+
+<$vars currentState={{{ [<currentTiddler>get[viewState]] }}}>
+<$button>
+<$action-setfield $tiddler=<<currentTiddler>> $field="viewState" $value={{{ [<currentState>match[nodes]then[cards]else[nodes]] }}}/>
+{{$:/core/images/right-arrow}} 
+</$button>
+
+<$reveal type="match" stateTitle=<<currentTiddler>> stateField="viewState" text="nodes">
+  {{||$:/plugins/sq/streams/nodes-list-template}}
+</$reveal>
+
+<$reveal type="match" stateTitle=<<currentTiddler>> stateField="viewState" text="cards">
+  {{||$:/plugins/NoteStreams/streams-stacks/Template/Cards}}
+</$reveal>
+</$vars>

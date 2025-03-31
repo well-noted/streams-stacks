@@ -1,0 +1,508 @@
+created: 20240906231856264
+modified: 20250329000151327
+revision: 0
+tags: 
+title: $:/plugins/NoteStreams/streams-stacks/Template/Cards
+type: text/vnd.tiddlywiki
+
+\import [[$:/plugins/sq/streams/action-macros]] [all[shadows+tiddlers]tag[$:/tags/streams/actionmacros]]  [all[shadows+tiddlers]tag[$:/tags/streams/user-actionmacros]]
+\whitespace trim
+
+\procedure log-drop-actions()
+<!-- Redefine actionTiddler to any undefined macro to strip off squarebrackets -->
+<$vars rawActionTiddler={{$:/state/dragging-log}}
+       actionTiddler=<<any-undefined-macro>>
+       dropTargetTiddler={{{ [<currentTiddler>get[stream-list]<columnIndex>] }}}>
+  <!-- Log operation details -->
+  <$action-log message="Raw Action Tiddler:" output=<<rawActionTiddler>>/>
+  <$action-log message="Cleaned Action Tiddler:" output=<<actionTiddler>>/>
+  <$action-log message="Drop Target Tiddler:" output=<<dropTargetTiddler>>/>
+  
+  <!-- Update state information -->
+  <$action-setfield $tiddler="$:/state/streams/drop-info" $field="actionTiddler" $value=<<actionTiddler>>/>
+  <$action-setfield $tiddler="$:/state/streams/drop-info" $field="dropTargetTiddler" $value=<<dropTargetTiddler>>/>
+  
+  <!-- Process drop if items are different -->
+  <$list filter="[<actionTiddler>!match<dropTargetTiddler>]">
+    <!-- Ensure both tiddlers have stream-type -->
+    <$list filter="[<dropTargetTiddler>!has[stream-type]]">
+      <$action-setfield $tiddler=<<dropTargetTiddler>> stream-type="default"/>
+    </$list>
+    <$list filter="[<actionTiddler>!has[stream-type]]">
+      <$action-setfield $tiddler=<<actionTiddler>> stream-type="default"/>
+    </$list>
+    
+    <!-- Update parent-child relationships if needed -->
+    <$list filter="[<actionTiddler>get[parent]!match<dropTargetTiddler>] [<actionTiddler>!has[parent]]">
+      <!-- Add to new parent's stream-list -->
+      <$action-listops $tiddler=<<dropTargetTiddler>> $field="stream-list" $subfilter="+[insertbefore<actionTiddler>]"/>
+      
+      <!-- Update original parent relationships -->
+      <$vars original-parent={{{ [<actionTiddler>get[parent]] }}}>
+        <$action-listops $tiddler=<<original-parent>> $field="stream-list" $subfilter="-[<actionTiddler>]"/>
+        <$action-setfield $tiddler=<<actionTiddler>> parent=<<dropTargetTiddler>>/>
+      </$vars>
+    </$list>
+  </$list>
+</$vars>
+\end
+
+\procedure menu-item(title, subtitle:"", actions:"")
+    <$button class="tc-menu-list-item tc-btn-invisible" actions=<<actions>> >
+        <span class="sq-contextmenu-itemwrapper">
+            <span class="sq-contextmenu-itemtext"><<title>></span>
+            <span class="sq-contextmenu-itemicon"><$macrocall $name="displayshortcuts" $output="text/plain" shortcuts=<<subtitle>> prefix="" separator=" " suffix=""/></span>
+        </span>
+    </$button>
+\end
+
+\procedure menu-divider()
+    <div class="sq-contextmenu-divider"/>
+\end
+
+\procedure common-menu-items()
+    <$macrocall $name="menu-item" title="Open" actions="""<$action-navigate/>"""/>
+    <$macrocall $name="menu-item" title="Rename" subtitle="((streams-rename))" actions=<<rename-node-actions>>/>
+    <$macrocall $name="menu-item" title="Add Description" subtitle="((add-description-actions))" actions=<<add-description-actions>>/>
+    <$macrocall $name="menu-item" title="Mark as Stub" subtitle="((mark-stub))" actions=<<addStubTag>>/>
+    <$macrocall $name="menu-item" title="Copy Title" subtitle="((copy-link))" actions="""<<copy-link>>"""/>
+    <$macrocall $name="menu-item" title="Create Reference" subtitle="((create-link))" actions="""<<add-new-link>>"""/>
+    <$macrocall $name="menu-item" title="Transclude as Note" subtitle="((transclude-config))" actions="""<<transcludeAsNote>>"""/>
+    <$macrocall $name="menu-item" title="Delete" subtitle="((streams-delete))" actions=<<delete-node-actions>>/>
+\end
+
+\procedure set-log-target()
+    <!-- Set up the drop target information -->
+    <$action-createtiddler $basetitle="$:/state/current-drop-target"/>
+    <$action-setfield $tiddler="$:/state/current-drop-target" text=<<columnIndex>>/>
+    <$action-setfield $tiddler="$:/state/debug/last-drop-target" text=<<columnIndex>>/>
+    <$action-setfield $tiddler="$:/state/debug/hover-target" text={{{ [<currentTiddler>get[stream-list]<columnIndex>] }}}/>
+    <$action-sendmessage $message="tm-notify" $param="DropTargetSet"/>
+    <$action-log message="Drop target set to: " output=<<columnIndex>>/>
+\end
+
+\procedure log-drag-start()
+    <!-- Track the start of a drag operation -->
+    <$action-setfield $tiddler="$:/state/dragging-log" text=<<actionTiddler>>/>
+    <$action-setfield $tiddler="$:/state/sq/nodes/global-drag-state" text="yes"/>
+    <$action-log message="Drag started: " output=<<actionTiddler>>/>
+\end
+
+\procedure log-drag-end()
+    <!-- Clean up after drag operation -->
+    <$action-deletetiddler $tiddler="$:/state/dragging-log"/>
+    <$action-setfield $tiddler="$:/state/sq/nodes/global-drag-state" text="no"/>
+    <$action-log message="Drag ended"/>
+\end
+
+\function is-dragging() 
+[{$:/state/sq/nodes/global-drag-state}match[yes]]
+\end
+
+\function get-stream-parent(item)
+[<item>get[parent]]
+\end
+
+<$let 
+  streamList={{{ [<currentTiddler>get[stream-list]] }}}
+  viewingTiddler={{{ [[$:/state/viewing-tiddler/]addsuffix<currentTiddler>] }}}
+>
+
+<$button class="tc-btn-invisible">
+  <$list filter="[<viewingTiddler>get[text]!match<currentTiddler>]" variable="dummy">
+    <$action-setfield $tiddler=<<viewingTiddler>> text={{{ [<viewingTiddler>get[text]get[parent]] }}}/>
+  </$list>
+  Back
+</$button>
+
+
+<div class="custom-stream-grid">
+<$list filter="[<viewingTiddler>get[text]else<currentTiddler>get[stream-list]enlist-input[]sort[created]]" variable="columnIndex">
+
+<$droppable 
+    actions=<<log-drop-actions>> 
+    tag="div" 
+    class="custom-stream-column custom-drop-zone" 
+    data-drop-target={{{ [<columnIndex>] }}}>
+
+<$draggable tiddler=<<columnIndex>> startactions=<<log-drag-start>> endactions=<<log-drag-end>> tag="div" class="custom-draggable" data-drag-item={{{ [<columnIndex>] }}} actions=<<log-drop-actions>>>
+
+<div class="custom-stream-header">
+  <$vars tiddlerTitle={{{ [<viewingTiddler>get[text]get[stream-list]<columnIndex>] }}}
+         editState={{{ [[$:/state/edit-caption/]addsuffix<viewingTiddler>addsuffix[/]addsuffix<columnIndex>] }}}>
+    <div class="header-content">
+      <$list filter="[<tiddlerTitle>get[stream-list]count[]!match[0]]" emptyMessage="""
+        <$reveal type="match" state=<<editState>> text="edit">
+          <$edit-text tiddler=<<tiddlerTitle>> field="caption" tag="input" class="custom-edit-texteditable"/>
+          <$button class="custom-btn-invisible" set=<<editState>> setTo="">
+            {{$:/core/images/done-button}}
+          </$button>
+          <$button class="custom-btn-invisible custom-delete-button">
+            <$vars tiddlerToDelete={{{ [<viewingTiddler>get[text]get[stream-list]<columnIndex>] }}}>
+              <$action-sendmessage $message="tm-delete-tiddler" $param=<<tiddlerToDelete>>/>
+              <$action-listops $tiddler={{{ [<viewingTiddler>get[text]] }}} $field="stream-list" $subfilter="-[<tiddlerToDelete>]"/>
+            </$vars>
+            {{$:/core/images/delete-button}}
+          </$button>
+        </$reveal>
+        <$reveal type="nomatch" state=<<editState>> text="edit">
+          <$button class="custom-btn-invisible" set=<<editState>> setTo="edit">
+            <$text text={{{ [<tiddlerTitle>get[caption]else<tiddlerTitle>] }}}/>
+          </$button>
+        </$reveal>
+      """>
+        <$button class="custom-btn-invisible">
+          <$action-setfield $tiddler=<<viewingTiddler>> text=<<tiddlerTitle>>/>
+          <$text text={{{ [<tiddlerTitle>get[caption]else<tiddlerTitle>] }}}/>
+        </$button>
+      </$list>
+   </div>
+    <div class="header-icons">
+  <$list filter="[<tiddlerTitle>field:temperature[high]]">
+    <span class="temperature-icon">
+      <i class="fas fa-temperature-high" title="High Temperature"></i>
+    </span>
+  </$list>
+	<$list filter="[<tiddlerTitle>field:status[preferred]]">
+    <span class="header-icons">
+      <i class="fas .fa-star" title="Preferred"></i>
+    </span>
+		</$list>
+  <$list filter="[<tiddlerTitle>field:temperature[medium]]">
+    <span class="temperature-icon">
+      <i class="fas fa-temperature-three-quarters" title="Medium Temperature"></i>
+    </span>
+  </$list>
+  <$list filter="[<tiddlerTitle>field:temperature[low]]">
+    <span class="temperature-icon">
+      <i class="fas fa-temperature-half" title="Low Temperature"></i>
+    </span>
+  </$list>
+  <$list filter="[<tiddlerTitle>field:sun[full]]">
+    <span class="sun-icon">
+      <i class="fas fa-sun" title="Full Sun"></i>
+    </span>
+  </$list>
+  <$list filter="[<tiddlerTitle>field:sun[partial]]">
+    <span class="sun-icon">
+      <i class="fas fa-cloud-sun" title="Partial Sun"></i>
+    </span>
+  </$list>
+  <$list filter="[<tiddlerTitle>field:sun[shade]]">
+    <span class="sun-icon">
+      <i class="fas fa-cloud" title="Shade"></i>
+    </span>
+  </$list>
+  <$button class="custom-btn-invisible custom-menu-button" popup=<<qualify "$:/state/popup/stream-menu">>>
+    ⋮
+    <$action-setfield $tiddler="$:/state/popup/stream-menu/coords" text={{{ [<event.clientX>addsuffix[,]addsuffix<event.clientY>] }}}/>
+    <$action-setfield $tiddler="$:/temp/selected-title" text=<<tiddlerTitle>>/>
+  </$button>
+</div>
+
+  </$vars>
+</div>
+
+
+
+
+  
+  <div class="custom-stream-date">
+    <$vars tiddlerTitle={{{ [<viewingTiddler>get[text]get[stream-list]<columnIndex>] }}}
+           dateEditState={{{ [[$:/state/custom-date-edit/]addsuffix<viewingTiddler>addsuffix[/]addsuffix<columnIndex>] }}}
+           tempDateTiddler={{{ [[$:/state/temp-date/]addsuffix<viewingTiddler>addsuffix[/]addsuffix<columnIndex>] }}}>
+    <$reveal type="nomatch" state=<<dateEditState>> text="edit">
+    <$button class="custom-btn-invisible" set=<<dateEditState>> setTo="edit">
+    <$view tiddler=<<tiddlerTitle>> field="created" format="date" template="MM/DD/YYYY"/>
+    </$button>
+    </$reveal>
+    <$reveal type="match" state=<<dateEditState>> text="edit">
+    <$let currentDate={{{ [<tiddlerTitle>get[created]format:date[YYYY-MM-DD]] }}}>
+    <$edit-text tiddler=<<tempDateTiddler>> tag="input" type="date" default=<<currentDate>> class="custom-edit-texteditable"/>
+    <$button class="custom-btn-invisible custom-tiddlylink" style="margin-left: 5px;">
+    <$action-setfield $tiddler=<<tiddlerTitle>> created={{{ [<tempDateTiddler>get[text]!is[blank]split[-]join[]addsuffix[120000]] :else[<tiddlerTitle>get[created]] }}}/>
+    <$action-deletetiddler $tiddler=<<tempDateTiddler>>/>
+    <$action-setfield $tiddler=<<dateEditState>> $value=""/>
+    {{$:/core/images/done-button}}
+    </$button>
+    </$let>
+    </$reveal>
+    </$vars>
+  </div>
+<div class="custom-stream-content">
+  <$vars tiddlerTitle={{{ [<viewingTiddler>get[text]get[stream-list]<columnIndex>] }}}
+         editState={{{ [[$:/state/edit-cell/]addsuffix<viewingTiddler>addsuffix[/]addsuffix<columnIndex>] }}}>
+    <$reveal type="match" state=<<editState>> text="edit">
+      <$edit-text tiddler=<<tiddlerTitle>> field="text" tag="textarea" class="tc-edit-texteditor"/>
+      <$button class="custom-btn-invisible" set=<<editState>> setTo="">
+        {{$:/core/images/done-button}}
+      </$button>
+    </$reveal>
+    <$reveal type="nomatch" state=<<editState>> text="edit">
+      <$button class="custom-btn-invisible custom-cell-content" set=<<editState>> setTo="edit">
+        <$transclude tiddler=<<tiddlerTitle>> field="text">
+          <span class="custom-empty-cell">&nbsp;</span>
+        </$transclude>
+      </$button>
+    </$reveal>
+  </$vars>
+</div>
+</$draggable>
+</$droppable>
+</$list>
+</div>
+</$let>
+
+{{||$:/plugins/NoteStreams/streams-stacks/cards-node-template}}
+
+<$vars contextmenu-state=<<qualify "$:/state/popup/stream-menu">>>
+<$reveal type="popup" state=<<contextmenu-state>> class="tc-popup-keep" animate="yes" retain="yes" style={{{ [{$:/state/popup/stream-menu/coords}addprefix[left:]addsuffix[px;top:]addsuffix[px;]addsuffix[position:absolute;z-index:1000;]] }}}>
+  <div class="tc-drop-down custom-log-menu sq-contextmenu">
+    <$vars currentTiddler={{$:/temp/selected-title}}>
+      <$list filter="[<currentTiddler>tag[Journal]]" variable="journalCheck">
+            <$macrocall $name="menu-item" title="Add Entry" subtitle="((add-journal-entry))" actions=<<add-journal-entry-actions>>/>
+            <$macrocall $name="menu-item" title="View Timeline" subtitle="((view-journal-timeline))" actions=<<view-journal-timeline-actions>>/>
+            <$macrocall $name="menu-item" title="Remove Journal Tag" subtitle="((remove-journal-tag))" actions=<<removeJournalTag>>/>
+            <$macrocall $name="menu-item" title="Adopt Diary" subtitle="((adopt-diary))" actions=<<adopt-diary-actions>>/>
+            <$macrocall $name="menu-item" title="Recaption" subtitle="((recaption))" actions=<<recaption-actions>>/>
+            <$macrocall $name="menu-item" title="Add Diary" subtitle="((add-diary-actions))" actions=<<add-diary-actions>>/>
+            <$macrocall $name="menu-item" title="Copy Diary" subtitle="((copy-journal))" actions=<<copy-journal>>/>
+            <<common-menu-items>>
+        </$list>
+
+        <$list filter="[<currentTiddler>tag[Idea]]" variable="ideaCheck">
+            <$macrocall $name="menu-item" title="Create Topic" subtitle="((create-topic))" actions=<<create-topic-actions>>/>
+            <$macrocall $name="menu-item" title="Remove Idea Tag" subtitle="((remove-idea-tag))" actions=<<removeIdeaTag>>/>
+            <$macrocall $name="menu-item" title="Adopt Index" subtitle="((adopt-index))" actions=<<adopt-index-actions>>/>
+            <$macrocall $name="menu-item" title="Add Description" subtitle="((add-description))" actions=<<add-description-actions>>/>
+            <$macrocall $name="menu-item" title="Rename" subtitle="((rename))" actions=<<rename-node-actions>>/>
+            <$macrocall $name="menu-item" title="Add Alias" subtitle="((add-alias))" actions=<<add-alias-actions>>/>
+            <$macrocall $name="menu-item" title="Upgrade to Index" subtitle="((mark-index))" actions=<<mark-index-actions>>/>
+            <<common-menu-items>>
+        </$list>
+
+        <!-- Add the rest of the list filters and menu items here -->
+
+        <$list filter="[<currentTiddler>!tag[Journal]!tag[Idea]!tag[Index]!tag[Place]!tag[concept]!tag[description]!tag[element]!tag[character]!tag[reaction]!tag[Notes]]" variable="defaultCheck">
+            <$macrocall $name="menu-item" title="Mark for Excision" subtitle="((mark-excision))" actions=<<addExcisionTag>>/>
+            <$macrocall $name="menu-item" title="Mark as Journal" subtitle="((addJournalTag))" actions="""<<addJournalTag>>/>"""/>
+            <$macrocall $name="menu-item" title="Mark TODO" subtitle="((mark-todo))" actions="""<<insertTodo>>/>"""/>
+            <$macrocall $name="menu-item" title="Mark Idea" subtitle="((mark-idea))" actions=<<mark-idea-actions>>/>
+            <$macrocall $name="menu-item" title="Mark Place" subtitle="((mark-place))" actions=<<mark-place-actions>>/>
+            <$macrocall $name="menu-item" title="Clone tiddler" subtitle="((clone-tiddler))" actions=<<clone-tiddler-actions>>/>
+            <$macrocall $name="menu-item" title="Mark Incomplete"  subtitle="((mark-incomplete))" actions="""<<mark-incomplete>>/>"""/>
+            <$macrocall $name="menu-item" title="Mark Note"  subtitle="((mark-note))" actions="""<<mark-note>>/>"""/>
+            <<common-menu-items>>
+        </$list>
+
+        <$list filter="[all[shadows+tiddlers]tag[$:/tags/streams/contextmenu]]" variable="listItem">
+            <$macrocall $name="menu-item"
+                title={{{[<listItem>get[sq-contextmenu-name]]}}} 
+                subtitle={{{[<listItem>get[key]] [<listItem>get[sq-contextmenu-subtitle]] +[first[]]}}} 
+                actions={{{[<listItem>get[text]]}}} />
+        </$list>
+        <<menu-divider>>
+        <$macrocall $name="menu-item" title="Keyboard Shortcuts (?)" actions="""<$action-navigate $to="$:/plugins/sq/streams/info/keyboard-shortcuts"/>"""/>
+    </$vars>
+  </div>
+</$reveal>
+</$vars>
+
+
+
+<style>
+.custom-drop-zone {
+  min-height: 50px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.custom-drop-zone:hover {
+  border-color: #999;
+}
+
+.custom-drop-zone.tc-dragover {
+  background-color: rgba(224, 224, 224, 0.5);
+  border: 2px dashed #999;
+}
+
+.custom-draggable {
+  cursor: move;
+  user-select: none;
+}
+
+.custom-stream-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  width: 100%;
+  border-top: 1px solid #ccc;
+  border-left: 1px solid #ccc;
+}
+
+.custom-stream-column {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+}
+
+.custom-stream-header, .custom-stream-date, .custom-stream-content {
+  padding: 5px;
+}
+
+.custom-stream-header {
+  font-weight: bold;
+  border-bottom: 1px solid #ccc;
+	background-color: #001f20;
+}
+
+.custom-stream-date {
+  background-color: #1b1e1f;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.custom-stream-content {
+  flex-grow: 1;
+}
+
+.custom-edit-texteditable {
+  width: 80%;
+  margin-right: 5px;
+}
+
+.custom-empty-cell {
+  display: inline-block;
+  width: 100%;
+  height: 1em;
+}
+
+.custom-cell-content {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 1em;
+  text-align: left;
+}
+
+.custom-edit-texteditable[type="date"] {
+  width: 70%;
+  margin-right: 5px;
+}
+
+.custom-stream-header, .custom-stream-date, .custom-stream-content {
+  cursor: pointer;
+}
+
+.custom-btn-invisible {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.custom-delete-button {
+  float: right;
+  width: auto;
+  padding: 2px;
+  margin-top: -5px; /* Add this line to move the button up */
+}
+
+
+.custom-stream-date {
+  background-color: #1b1e1f;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.custom-edit-texteditable[type="date"] {
+  background-color: #1b1e1f;
+  color: #666;
+  border: 1px solid #ccc;
+}
+
+.custom-edit-texteditable[type="date"]:focus {
+  background-color: #1b1e1f;
+  color: #666;
+}
+
+.title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+
+.temperature-icon {
+  margin-left: 70%; /* This pushes the temperature icon to the right */
+	margin-right: 25px; 
+}
+
+.temperature-icon, .sun-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 5px;
+}
+
+.fa-temperature-high:before {
+  content: "\f769";
+  color: #ff4500; /* Red for high temperature */
+  font-size: 0.9em;
+}
+
+.fa-temperature-three-quarters:before {
+  content: "\f2c8";
+  color: #ffa500; /* Orange for medium temperature */
+  font-size: 0.9em;
+}
+
+.fa-temperature-half:before {
+  content: "\f2c9";
+  color: #ffff00; /* Yellow for low temperature */
+  font-size: 0.9em;
+}
+
+.fa-star:before {
+  content: "\f005"; 
+	color: #ffff00; /* Yellow */
+  font-size: 0.9em;
+}
+
+.fa-sun:before {
+  content: "\f185";
+  color: #ffd700; /* Gold for full sun */
+  font-size: 0.9em;
+}
+
+.fa-cloud-sun:before {
+  content: "\f6c4";
+  color: #87ceeb; /* Sky blue for partial sun */
+  font-size: 0.9em;
+}
+
+.fa-cloud:before {
+  content: "\f0c2";
+  color: #808080; /* Gray for shade */
+  font-size: 0.9em;
+}
+
+.header-icons {
+  display: flex;
+  align-items: center;
+	margin-left: auto; /* This pushes the icons to the right */
+}
+
+.custom-menu-button {
+  display: flex;
+  align-items: right;
+}
+</style>
+

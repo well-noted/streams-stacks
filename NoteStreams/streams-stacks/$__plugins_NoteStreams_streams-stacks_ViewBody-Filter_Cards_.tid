@@ -1,0 +1,9 @@
+created: 20240905173243801
+list-before: $:/config/ViewTemplateBodyFilters/hide-body
+modified: 20250331145723664
+revision: 0
+tags: $:/tags/ViewTemplateBodyFilter
+title: $:/plugins/NoteStreams/streams-stacks/ViewBody-Filter/Cards/
+type: text/plain
+
+[tag[Stacks]] +[limit[2]then[$:/plugins/NoteStreams/streams-stacks/Viewtemplates/Cards]]
